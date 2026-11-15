@@ -2,12 +2,6 @@
 #include <string.h> 
 #include "meuBanco.h"
 
-
-// banco.c
-#include <stdio.h> 
-#include <string.h> 
-//#include "meuBanco.h"
-
 // struct
 typedef struct
 {
