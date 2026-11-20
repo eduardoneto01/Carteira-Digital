@@ -72,7 +72,7 @@ static void menuCliente(Conta *c)
         exibirDadosCliente(c);
         exibirHistorico(c);
 
-        printf("\n--- Operações ---\n");
+        printf("\n-- Operações --\n");
         printf("1 - Depositar\n");
         printf("2 - Sacar\n");
         printf("3 - Solicitar empréstimo\n");
@@ -147,7 +147,7 @@ static void consultarHistorico(Banco *banco)
         return;
     }
 
-    printf("\n=== CLIENTES ===\n");
+    printf("\n== CLIENTES ==\n");
     for (int i = 0; i < banco->quantidadeClientes; i++)
     {
         printf("Conta %d - %s\n", banco->contas[i].numero, banco->contas[i].cliente);
@@ -190,7 +190,7 @@ int main()
 
     do
     {
-        printf("\n===== CARTEIRA DIGITAL =====\n");
+        printf("\n== CARTEIRA DIGITAL ==\n");
         printf("1 - Abrir banco\n");
         printf("2 - Consultar histórico\n");
         printf("s - Sair\n");

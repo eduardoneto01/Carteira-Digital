@@ -60,11 +60,11 @@ float lerFloat(const char *mensagem)
 
 // INTERFACE
 
-void limparTela(void)
+void limparTela()
 {
 }
 
-void pausar(void)
+void pausar()
 {
 }
 
@@ -72,13 +72,14 @@ void pausar(void)
 
 void formatarNumeroConta(char *destino, int tamanho, int numero, int tipoConta)
 {
+    snprintf(destino, tamanho, "%d-%02d", numero, tipoConta + 1);
 }
 
 // CADASTRO
 
 static int proximoNumeroConta(const Banco *banco)
 {
-    int maior = 0;
+    int maior = NUMERO_INICIAL - 1;
     for (int i = 0; i < banco->quantidadeClientes; i++)
     {
         if (banco->contas[i].numero > maior)
@@ -107,7 +108,7 @@ int criarConta(Banco *banco)
     Conta nova;
     memset(&nova, 0, sizeof nova); // Zera saldos e histórico.
 
-    printf("\n=== ABRIR CONTA ===\n");
+    printf("\n== ABRIR CONTA ==\n");
 
     do
     {
@@ -184,16 +185,20 @@ Conta *consultarCliente(Banco *banco, int numero)
 
 void exibirDadosCliente(const Conta *c)
 {
-    printf("\n=== DADOS DO CLIENTE ===\n");
-    printf("Cliente: %s\n", c->cliente);
-    printf("Número da conta: %d\n", c->numero);
+    printf("\n== DADOS DO CLIENTE ==\n\n");
+    printf("Cliente: %s\n\n", c->cliente);
 
     float total = 0;
     for (int tipo = 0; tipo < QUANTIDADE_TIPOS; tipo++)
     {
         if (c->possui[tipo])
         {
-            printf("Conta %s – Saldo: R$ %.2f\n", nomeTipoConta(tipo), c->saldo[tipo]);
+            char numeroConta[16];
+            formatarNumeroConta(numeroConta, sizeof(numeroConta), c->numero, tipo);
+
+            printf("[Conta %s]\n", nomeTipoConta(tipo));
+            printf("Número: %s\n", numeroConta);
+            printf("Saldo: R$ %.2f\n\n", c->saldo[tipo]);
             total += c->saldo[tipo];
         }
     }
@@ -226,7 +231,7 @@ static const char *codigoTransacao(int tipo)
 
 void exibirHistorico(const Conta *c)
 {
-    printf("\n=== HISTÓRICO (últimas %d transações) ===\n", MAX_HISTORICO);
+    printf("\n== HISTÓRICO (últimas %d transações) ==\n", MAX_HISTORICO);
 
     if (c->quantidadeHistorico == 0)
     {
@@ -618,7 +623,7 @@ float consultarSaldoTotalBanco(const Banco *banco)
 
 void listarClientesEmprestimo(const Banco *banco)
 {
-    printf("\n=== CLIENTES PERMITIDOS PARA FAZER EMPRÉSTIMO ===\n");
+    printf("\n== CLIENTES PERMITIDOS PARA FAZER EMPRÉSTIMO ==\n");
     int count = 0;
     for (int i = 0; i < (*banco).quantidadeClientes; i++)
     {
@@ -635,7 +640,7 @@ void listarClientesEmprestimo(const Banco *banco)
 
 void verificarSaldoNegativo(const Banco *banco)
 {
-    printf("\n=== CLIENTES COM SALDO NEGATIVO NA CONTA CORRENTE ===\n");
+    printf("\n== CLIENTES COM SALDO NEGATIVO NA CONTA CORRENTE ==\n");
     int count = 0;
     for (int i = 0; i < (*banco).quantidadeClientes; i++)
     {
@@ -659,7 +664,7 @@ void listarClientesSorteados(const Banco *banco)
 
 void exibirRelatorio(const Banco *banco)
 {
-    printf("\n=== RELATÓRIO GERAL DO BANCO ===\n");
+    printf("\n== RELATÓRIO GERAL DO BANCO ==\n");
 
     printf("1. Saldo total do banco: R$ %.2f\n", consultarSaldoTotalBanco(banco));
     listarClientesEmprestimo(banco);
