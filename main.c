@@ -194,12 +194,12 @@ int main()
         printf("1 - Abrir banco\n");
         printf("2 - Consultar histórico\n");
         printf("s - Sair\n");
-        opcao = lerOpcao("Opção: ", 's'); // aceita 's' e 'S'
+        opcao = lerOpcao("Opção: ", 's'); // Aceita 's' e 'S'
 
         switch (opcao)
         {
         case '1':
-            criarConta(&banco);
+            abrirBanco(&banco);
             break;
         case '2':
             consultarHistorico(&banco);

@@ -114,7 +114,9 @@ int criarConta(Banco *banco)
     {
         lerTexto("Nome do cliente: ", nova.cliente, sizeof nova.cliente);
         if (strlen(nova.cliente) == 0)
+        {
             printf("O nome não pode ficar vazio.\n");
+        }
     } while (strlen(nova.cliente) == 0);
 
     printf("\nTipo de conta:\n");
@@ -129,7 +131,9 @@ int criarConta(Banco *banco)
     {
         opcao = lerInteiro("Opção: ");
         if (opcao < 1 || opcao > 5)
+        {
             printf("Opção inválida. Escolha de 1 a 5.\n");
+        }
     } while (opcao < 1 || opcao > 5);
 
     switch (opcao)
@@ -167,6 +171,23 @@ int criarConta(Banco *banco)
 
 int abrirBanco(Banco *banco)
 {
+    int numeroClientes;
+
+    do
+    {
+        numeroClientes = lerInteiro("\nQuantos clientes você deseja cadastrar? ");
+
+        if (numeroClientes <= 0)
+        {
+            printf("O número de clientes precisa ser positivo, tente novamente.\n");
+        }
+    } while (numeroClientes <= 0);
+
+    for (int cliente = 0; cliente < numeroClientes; cliente++)
+    {
+        criarConta(banco);
+    }
+
     return 0;
 }
 
@@ -178,7 +199,9 @@ Conta *consultarCliente(Banco *banco, int numero)
     for (int i = 0; i < banco->quantidadeClientes; i++)
     {
         if (banco->contas[i].numero == numero)
+        {
             return &banco->contas[i];
+        }
     }
     return NULL;
 }
@@ -194,7 +217,7 @@ void exibirDadosCliente(const Conta *c)
         if (c->possui[tipo])
         {
             char numeroConta[16];
-            formatarNumeroConta(numeroConta, sizeof(numeroConta), c->numero, tipo);
+            formatarNumeroConta(numeroConta, sizeof numeroConta, c->numero, tipo);
 
             printf("[Conta %s]\n", nomeTipoConta(tipo));
             printf("Número: %s\n", numeroConta);
