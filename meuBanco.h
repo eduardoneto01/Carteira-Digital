@@ -57,8 +57,8 @@ int lerInteiro(const char *mensagem);
 float lerFloat(const char *mensagem);
 
 // INTERFACE
-void limparTela();
-void pausar();
+void limparTela(void);
+void pausar(void);
 
 // NUMERAÇÃO
 void formatarNumeroConta(char *destino, int tamanho, int numero, int tipoConta);
@@ -102,7 +102,7 @@ int ehPrimo(int valor);
 int efetuarSorteio(Banco *banco);
 
 // RELATÓRIOS
-float consultarSaldoTotalBanco(const Banco *banco);
+void consultarSaldoTotalBanco(const Banco *banco);
 void listarClientesEmprestimo(const Banco *banco);
 void verificarSaldoNegativo(const Banco *banco);
 void listarClientesAptosTitulo(const Banco *banco);
