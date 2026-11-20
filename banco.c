@@ -58,6 +58,22 @@ float lerFloat(const char *mensagem)
     }
 }
 
+// INTERFACE
+
+void limparTela(void)
+{
+}
+
+void pausar(void)
+{
+}
+
+// NUMERAÇÃO
+
+void formatarNumeroConta(char *destino, int tamanho, int numero, int tipoConta)
+{
+}
+
 // CADASTRO
 
 static int proximoNumeroConta(const Banco *banco)
@@ -148,6 +164,11 @@ int criarConta(Banco *banco)
     return 1;
 }
 
+int abrirBanco(Banco *banco)
+{
+    return 0;
+}
+
 // CONSULTA
 
 // Retorna um ponteiro para a conta com esse número, ou NULL. O ponteiro deixa de valer depois que um novo cliente for cadastrado, já que o realloc pode mudar o vetor de lugar na memória.
@@ -220,6 +241,10 @@ void exibirHistorico(const Conta *c)
 
         printf("%d. R$ %.2f (%s)\n", i + 1, absoluto, codigoTransacao(c->historico[i].tipo));
     }
+}
+
+void alertarSaldoNegativo(const Conta *c)
+{
 }
 
 // ARQUIVOS
@@ -402,7 +427,7 @@ int carregarBanco(Banco *banco, const char *caminho)
     return 1;
 }
 
-// ALOCAÇÃO E LIBERAÇÃO DE MEMÓRIA
+// MEMÓRIA
 
 int adicionarConta(Banco *banco, const Conta *nova)
 {
@@ -514,6 +539,70 @@ int solicitarEmprestimo(Conta *c, float valor)
     return 0;
 }
 
+// TÍTULOS
+
+int podeComprarTitulo(const Conta *c)
+{
+    return 0;
+}
+
+int comprarTitulo(Conta *c)
+{
+    return 0;
+}
+
+// SORTEIO
+
+int fibonacci(int valor)
+{
+    if (valor == 0)
+    {
+        return 0;
+    }
+
+    if (valor == 1)
+    {
+        return 1;
+    }
+
+    return fibonacci(valor - 1) + fibonacci(valor - 2);
+}
+
+int somaFibonacci(int valor)
+{
+    int soma = 0;
+
+    for (int i = 1; i <= valor; i++)
+    {
+        soma += fibonacci(i);
+    }
+
+    return soma;
+}
+
+int ehPrimo(int valor)
+{
+    if (valor <= 1)
+    {
+        return 0;
+    }
+
+    for (int i = 2; i <= valor / i; i++)
+    {
+        if (valor % i == 0)
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+int efetuarSorteio(Banco *banco)
+{
+    return 0;
+}
+
 // RELATÓRIOS
 
 float consultarSaldoTotalBanco(const Banco *banco)
@@ -560,20 +649,12 @@ void verificarSaldoNegativo(const Banco *banco)
         printf("Nenhum cliente está com saldo negativo na conta corrente.\n");
 }
 
-void listarClientesSalarioEntre(const Banco *banco, float min, float max)
+void listarClientesAptosTitulo(const Banco *banco)
 {
-    printf("\n=== CLIENTES QUE POSSUEM O SALÁRIO ENTRE R$ %.2f E R$ %.2f ===\n", min, max);
-    int count = 0;
-    for (int i = 0; i < (*banco).quantidadeClientes; i++)
-    {
-        if ((*banco).contas[i].possui[SALARIO] == 1 && (*banco).contas[i].saldo[SALARIO] >= min && (*banco).contas[i].saldo[SALARIO] <= max)
-        {
-            printf("Cliente: %s. Conta: %d. Salário: R$ %.2f.\n", (*banco).contas[i].cliente, (*banco).contas[i].numero, (*banco).contas[i].saldo[SALARIO]);
-            count++;
-        }
-    }
-    if (count == 0)
-        printf("Não existe nenhum cliente nesta faixa de salário.\n");
+}
+
+void listarClientesSorteados(const Banco *banco)
+{
 }
 
 void exibirRelatorio(const Banco *banco)
@@ -583,5 +664,6 @@ void exibirRelatorio(const Banco *banco)
     printf("1. Saldo total do banco: R$ %.2f\n", consultarSaldoTotalBanco(banco));
     listarClientesEmprestimo(banco);
     verificarSaldoNegativo(banco);
-    listarClientesSalarioEntre(banco, 1000.0, 1500.0);
+    listarClientesAptosTitulo(banco);
+    listarClientesSorteados(banco);
 }
