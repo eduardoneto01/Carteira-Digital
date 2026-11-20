@@ -60,12 +60,19 @@ float lerFloat(const char *mensagem)
 
 // INTERFACE
 
-void limparTela()
+void limparTela(void)
 {
+#ifdef _WIN32
+    system("cls"); // Windows.
+#else
+    system("clear"); // macOS e Linux.
+#endif
 }
 
-void pausar()
+void pausar(void)
 {
+    char tecla[8];
+    lerTexto("\nPressione Enter para continuar...", tecla, sizeof tecla);
 }
 
 // NUMERAÇÃO
@@ -165,7 +172,19 @@ int criarConta(Banco *banco)
         return 0;
     }
 
-    printf("\nConta criada com sucesso! Número da conta: %d\n", nova.numero);
+    printf("\nConta(s) criada(s) com sucesso!\n");
+
+    for (int tipo = 0; tipo < QUANTIDADE_TIPOS; tipo++)
+    {
+        if (nova.possui[tipo])
+        {
+            char numeroConta[16];
+            formatarNumeroConta(numeroConta, sizeof numeroConta, nova.numero, tipo);
+
+            printf("\n[Conta %s]\n", nomeTipoConta(tipo));
+            printf("Número: %s\n", numeroConta);
+        }
+    }
     return 1;
 }
 
@@ -175,7 +194,7 @@ int abrirBanco(Banco *banco)
 
     do
     {
-        numeroClientes = lerInteiro("\nQuantos clientes você deseja cadastrar? ");
+        numeroClientes = lerInteiro("Quantos clientes você deseja cadastrar? ");
 
         if (numeroClientes <= 0)
         {
@@ -185,10 +204,16 @@ int abrirBanco(Banco *banco)
 
     for (int cliente = 0; cliente < numeroClientes; cliente++)
     {
-        criarConta(banco);
+        printf("\n-- Cliente %d --\n", cliente + 1);
+
+        if (!criarConta(banco))
+        {
+            printf("Erro ao cadastrar cliente.\n");
+            return 0;
+        }
     }
 
-    return 0;
+    return 1;
 }
 
 // CONSULTA
@@ -247,6 +272,10 @@ static const char *codigoTransacao(int tipo)
         return "S";
     case EMPRESTIMO:
         return "E";
+    case TITULO:
+        return "T";
+    case PREMIO:
+        return "P";
     default:
         return "DESCONHECIDA";
     }
@@ -273,6 +302,12 @@ void exibirHistorico(const Conta *c)
 
 void alertarSaldoNegativo(const Conta *c)
 {
+    if (c->possui[CORRENTE] && c->saldo[CORRENTE] < 0) {
+        char numeroConta[16];
+        formatarNumeroConta(numeroConta, sizeof numeroConta, c->numero, CORRENTE);
+
+        printf("Alerta! Sua conta %s está com saldo negativo de -R$ %.2f. Evite encargos fazendo uma transação.\n", numeroConta, (c->saldo[CORRENTE] * -1));
+    }
 }
 
 // ARQUIVOS
@@ -281,11 +316,25 @@ void alertarSaldoNegativo(const Conta *c)
 static int tipoDoCodigo(const char *codigo)
 {
     if (strcmp(codigo, "D") == 0)
+    {
         return DEPOSITO;
+    }
     if (strcmp(codigo, "S") == 0)
+    {
         return SAQUE;
+    }
     if (strcmp(codigo, "E") == 0)
+    {
         return EMPRESTIMO;
+    }
+    if (strcmp(codigo, "T") == 0)
+    {
+        return TITULO;
+    }
+    if (strcmp(codigo, "P") == 0)
+    {
+        return PREMIO;
+    }
     return 0;
 }
 
@@ -300,7 +349,7 @@ int salvarBanco(const Banco *banco, const char *caminho)
 
     fprintf(arquivo, "# Carteira digital – Dados dos clientes\n");
     fprintf(arquivo, "# POSSUI e SALDO seguem a ordem: Corrente - Salario - Poupanca\n");
-    fprintf(arquivo, "NUMERO DE CLIENTES %d\n", banco->quantidadeClientes);
+    fprintf(arquivo, "\nNUMERO DE CLIENTES %d\n", banco->quantidadeClientes);
 
     for (int i = 0; i < banco->quantidadeClientes; i++)
     {
@@ -311,6 +360,8 @@ int salvarBanco(const Banco *banco, const char *caminho)
         fprintf(arquivo, "POSSUI %d %d %d\n", c->possui[CORRENTE], c->possui[SALARIO], c->possui[POUPANCA]);
         fprintf(arquivo, "SALDO %.2f %.2f %.2f\n", c->saldo[CORRENTE], c->saldo[SALARIO], c->saldo[POUPANCA]);
         fprintf(arquivo, "EMPRESTIMO %d\n", c->temEmprestimo);
+        fprintf(arquivo, "TITULO %d\n", c->temTitulo);
+        fprintf(arquivo, "PREMIO %.2f\n", c->premioRecebido);
         fprintf(arquivo, "HISTORICO %d\n", c->quantidadeHistorico);
 
         for (int j = 0; j < c->quantidadeHistorico; j++)
@@ -376,6 +427,16 @@ static int lerContaArquivo(FILE *arquivo, Conta *c)
     }
 
     if (!lerLinhaArquivo(arquivo, linha, sizeof linha) || sscanf(linha, "EMPRESTIMO %d", &c->temEmprestimo) != 1)
+    {
+        return 0;
+    }
+
+    if (!lerLinhaArquivo(arquivo, linha, sizeof linha) || sscanf(linha, "TITULO %d", &c->temTitulo) != 1)
+    {
+        return 0;
+    }
+
+    if (!lerLinhaArquivo(arquivo, linha, sizeof linha) || sscanf(linha, "PREMIO %f", &c->premioRecebido) != 1)
     {
         return 0;
     }
@@ -633,7 +694,7 @@ int efetuarSorteio(Banco *banco)
 
 // RELATÓRIOS
 
-float consultarSaldoTotalBanco(const Banco *banco)
+void consultarSaldoTotalBanco(const Banco *banco)
 {
     float totalBanco = 0;
     for (int i = 0; i < (*banco).quantidadeClientes; i++)
@@ -641,40 +702,49 @@ float consultarSaldoTotalBanco(const Banco *banco)
         for (int t = 0; t < QUANTIDADE_TIPOS; t++)
             totalBanco += banco->contas[i].saldo[t];
     }
-    return totalBanco;
+
+    printf("== Saldo Total do banco ==\n");
+    printf("%d | R$ %.2f\n", banco->quantidadeClientes, totalBanco);
 }
 
 void listarClientesEmprestimo(const Banco *banco)
 {
-    printf("\n== CLIENTES PERMITIDOS PARA FAZER EMPRÉSTIMO ==\n");
-    int count = 0;
+    printf("\n== Clientes Aptos a Empréstimos ==\n");
+    int contagem = 0;
     for (int i = 0; i < (*banco).quantidadeClientes; i++)
     {
         if (podeFazerEmprestimo(&(*banco).contas[i]))
         {
             float limite = informarLimiteEmprestimo((*banco).contas[i].saldo[POUPANCA], (*banco).contas[i].saldo[CORRENTE]);
-            printf("Cliente: %s. Conta: %d. Limite: R$ %.2f.\n", (*banco).contas[i].cliente, (*banco).contas[i].numero, limite);
-            count++;
+            char numeroConta[16];
+
+            formatarNumeroConta(numeroConta, sizeof numeroConta, (*banco).contas[i].numero, CORRENTE);
+
+            printf("%s | %s | R$ %.2f\n", (*banco).contas[i].cliente, numeroConta, limite);
+            contagem++;
         }
     }
-    if (count == 0)
-        printf("Nenhum cliente está autorizado a fazer empréstimo no momento.\n");
+    if (contagem == 0)
+        printf("Nenhum cliente está autorizado a fazer Empréstimo no momento.\n");
 }
 
 void verificarSaldoNegativo(const Banco *banco)
 {
-    printf("\n== CLIENTES COM SALDO NEGATIVO NA CONTA CORRENTE ==\n");
-    int count = 0;
+    printf("\n== Clientes com Saldo Negativo na Conta Corrente ==\n");
+    int contagem = 0;
     for (int i = 0; i < (*banco).quantidadeClientes; i++)
     {
-        if ((*banco).contas[i].saldo[0] < 0)
+        if ((*banco).contas[i].saldo[CORRENTE] < 0)
         {
-            printf("Cliente: %s. Conta: %d. Saldo: R$ %.2f.\n", (*banco).contas[i].cliente, (*banco).contas[i].numero, (*banco).contas[i].saldo[CORRENTE]);
-            count++;
+            char numeroConta[16];
+            formatarNumeroConta(numeroConta, sizeof numeroConta, (*banco).contas[i].numero, CORRENTE);
+
+            printf("%s | %s | -R$ %.2f\n", (*banco).contas[i].cliente, numeroConta, ((*banco).contas[i].saldo[CORRENTE] * -1));
+            contagem++;
         }
     }
-    if (count == 0)
-        printf("Nenhum cliente está com saldo negativo na conta corrente.\n");
+    if (contagem == 0)
+        printf("Nenhum cliente está com Saldo Negativo na Conta Corrente.\n");
 }
 
 void listarClientesAptosTitulo(const Banco *banco)
@@ -687,9 +757,7 @@ void listarClientesSorteados(const Banco *banco)
 
 void exibirRelatorio(const Banco *banco)
 {
-    printf("\n== RELATÓRIO GERAL DO BANCO ==\n");
-
-    printf("1. Saldo total do banco: R$ %.2f\n", consultarSaldoTotalBanco(banco));
+    consultarSaldoTotalBanco(banco);
     listarClientesEmprestimo(banco);
     verificarSaldoNegativo(banco);
     listarClientesAptosTitulo(banco);

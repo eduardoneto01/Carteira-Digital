@@ -1,6 +1,8 @@
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "meuBanco.h"
 
 // Habilitar o UTF-8 no terminal.
@@ -25,7 +27,8 @@ static char lerOpcao(const char *mensagem, char seAcabar)
     return (char)tolower((unsigned char)texto[0]);
 }
 
-// Mostra só as contas que o cliente possui e devolve o valor do tipo escolhido (CORRENTE, SALARIO ou POUPANCA). Se ele tiver uma única conta, escolhe automaticamente.
+/*
+// Consulta as contas que o cliente possui e devolve o valor do tipo escolhido (CORRENTE, SALARIO ou POUPANCA). Se ele tiver uma única conta, escolhe automaticamente.
 static int escolherTipoConta(const Conta *c)
 {
     const char *nomes[QUANTIDADE_TIPOS] = {"Corrente", "Salário", "Poupança"};
@@ -45,7 +48,7 @@ static int escolherTipoConta(const Conta *c)
         return tiposDisponiveis[0];
     }
 
-    printf("Em qual conta?\n");
+    printf("\nEm qual conta?\n");
     for (int i = 0; i < quantidade; i++)
     {
         printf("%d - %s\n", i + 1, nomes[tiposDisponiveis[i]]);
@@ -84,7 +87,7 @@ static void menuCliente(Conta *c)
         case '1':
         {
             int tipo = escolherTipoConta(c);
-            float valor = lerFloat("Valor do depósito: R$ ");
+            float valor = lerFloat("\nValor do depósito: R$ ");
             if (depositar(c, tipo, valor))
             {
                 printf("Depósito realizado.\n");
@@ -138,8 +141,8 @@ static void menuCliente(Conta *c)
     } while (opcao != '4');
 }
 
-// Opção "Consultar histórico" do menu principal.
-static void consultarHistorico(Banco *banco)
+// Lista todos os clientes cadastrados no banco e permite consulta individual pelo número da conta.
+static void consultarClientes(Banco *banco)
 {
     if (banco->quantidadeClientes == 0)
     {
@@ -147,7 +150,7 @@ static void consultarHistorico(Banco *banco)
         return;
     }
 
-    printf("\n== CLIENTES ==\n");
+    printf("== CLIENTES ==\n\n");
     for (int i = 0; i < banco->quantidadeClientes; i++)
     {
         printf("Conta %d - %s\n", banco->contas[i].numero, banco->contas[i].cliente);
@@ -164,6 +167,15 @@ static void consultarHistorico(Banco *banco)
 
     menuCliente(c);
 }
+*/
+
+// Exibe o título formatado e estilizado para cada função do programa.
+static void exibirTitulo(const char *titulo)
+{
+    printf("==================================\n");
+    printf("  %s\n", titulo);
+    printf("==================================\n\n");
+}
 
 // PROGRAMA PRINCIPAL
 
@@ -175,50 +187,87 @@ int main()
     SetConsoleCP(65001);
 #endif
 
+    srand((unsigned)time(NULL));
     Banco banco = {NULL, 0};
 
     if (!carregarBanco(&banco, ARQUIVO_BANCO))
     {
         printf("Não foi possivel ler os dados salvos. Iniciando com o banco vazio.\n");
+        pausar();
     }
     else if (banco.quantidadeClientes > 0)
     {
+        limparTela();
         printf("%d cliente(s) carregado(s).\n", banco.quantidadeClientes);
+        pausar();
     }
 
     char opcao;
 
     do
     {
-        printf("\n== CARTEIRA DIGITAL ==\n");
+        limparTela();
+        exibirTitulo("CARTEIRA DIGITAL");
         printf("1 - Abrir banco\n");
         printf("2 - Consultar histórico\n");
+        printf("3 - Efetuar sorteio\n");
         printf("s - Sair\n");
         opcao = lerOpcao("Opção: ", 's'); // Aceita 's' e 'S'
 
         switch (opcao)
         {
         case '1':
+            limparTela();
+            exibirTitulo("ABRIR BANCO");
             abrirBanco(&banco);
+            pausar();
             break;
         case '2':
-            consultarHistorico(&banco);
+            limparTela();
+            exibirTitulo("HISTÓRICO DO BANCO");
+            if (banco.quantidadeClientes == 0)
+            {
+                printf("Abra o banco antes de consultar o histórico.\n");
+            }
+            else
+            {
+                exibirRelatorio(&banco);
+            }
+            pausar();
+            break;
+        case '3':
+            limparTela();
+            exibirTitulo("SORTEIO");
+            if (banco.quantidadeClientes == 0)
+            {
+                printf("Abra o banco antes de efetuar o sorteio.\n");
+            }
+            else
+            {
+                efetuarSorteio(&banco);
+            }
+            pausar();
             break;
         case 's':
             break;
         default:
+            limparTela();
             printf("Opção inválida.\n");
+            pausar();
         }
     } while (opcao != 's');
 
-    exibirRelatorio(&banco);
+    limparTela();
+    exibirTitulo("ENCERRANDO...");
 
     if (salvarBanco(&banco, ARQUIVO_BANCO))
     {
-        printf("\nDados salvos em \"%s\".\n", ARQUIVO_BANCO);
+        printf("Dados salvos em \"%s\".\n", ARQUIVO_BANCO);
     }
 
     liberarBanco(&banco);
     printf("Até a próxima!\n");
+    pausar();
+    limparTela();
     return 0;
 }
