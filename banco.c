@@ -327,6 +327,7 @@ void exibirDadosCliente(const Conta *c)
             printf("[Conta %s]\n", nomeTipoConta(tipo));
             printf("Número: %s\n", numeroConta);
             printf("Saldo: R$ %.2f\n\n", c->saldo[tipo]);
+            alertarSaldoNegativo(c);
             total += c->saldo[tipo];
         }
     }
