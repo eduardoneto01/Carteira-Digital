@@ -549,13 +549,13 @@ int carregarBanco(Banco *banco, const char *caminho)
 
 int adicionarConta(Banco *banco, const Conta *nova)
 {
-    Conta *temporaria = realloc((*banco).contas, ((*banco).quantidadeClientes + 1) * sizeof(Conta));
-    if (temporaria == NULL)
+    Conta *temporarias = realloc((*banco).contas, ((*banco).quantidadeClientes + 1) * sizeof(Conta));
+    if (temporarias == NULL)
     {
         printf("Erro ao alocar memória.\n");
         return 0;
     }
-    (*banco).contas = temporaria;
+    (*banco).contas = temporarias;
     (*banco).contas[(*banco).quantidadeClientes] = *nova;
     (*banco).quantidadeClientes++;
     return 1;
