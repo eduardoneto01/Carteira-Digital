@@ -64,10 +64,12 @@ void pausar(void);
 void formatarNumeroConta(char *destino, int tamanho, int numero, int tipoConta);
 
 // CADASTRO
+const char *nomeTipoConta(int tipo);
 int abrirBanco(Banco *banco);
 int criarConta(Banco *banco);
 
 // CONSULTA
+void consultarClientes(Banco *banco);
 Conta *consultarCliente(Banco *banco, int numero);
 void exibirDadosCliente(const Conta *c);
 void exibirHistorico(const Conta *c);

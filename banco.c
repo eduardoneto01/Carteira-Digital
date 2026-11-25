@@ -3,6 +3,80 @@
 #include <string.h>
 #include "meuBanco.h"
 
+#define CRITERIO_PRIMO 1
+#define CRITERIO_PAR 2
+#define CRITERIO_ACIMA_MEDIA 3
+
+// Transforma o código na primeira letra do nome da transação. Ex.: 3 (EMPRESTIMO) → "E".
+static const char *codigoTransacao(int tipo)
+{
+    switch (tipo)
+    {
+    case DEPOSITO:
+        return "D";
+    case SAQUE:
+        return "S";
+    case EMPRESTIMO:
+        return "E";
+    case TITULO:
+        return "T";
+    case PREMIO:
+        return "P";
+    default:
+        return "DESCONHECIDA";
+    }
+}
+
+// Transforma a primeira letra do nome da transação no código correspondente. Ex.: "S" → 2 (SAQUE). Retorna 0 se não reconhecer.
+static int tipoDoCodigo(const char *codigo)
+{
+    if (strcmp(codigo, "D") == 0)
+    {
+        return DEPOSITO;
+    }
+    if (strcmp(codigo, "S") == 0)
+    {
+        return SAQUE;
+    }
+    if (strcmp(codigo, "E") == 0)
+    {
+        return EMPRESTIMO;
+    }
+    if (strcmp(codigo, "T") == 0)
+    {
+        return TITULO;
+    }
+    if (strcmp(codigo, "P") == 0)
+    {
+        return PREMIO;
+    }
+    return 0;
+}
+
+static int proximoNumeroConta(const Banco *banco)
+{
+    int maior = NUMERO_INICIAL - 1;
+    for (int i = 0; i < banco->quantidadeClientes; i++)
+    {
+        if (banco->contas[i].numero > maior)
+            maior = banco->contas[i].numero;
+    }
+    return maior + 1;
+}
+
+// Lê a próxima linha útil do arquivo, pulando linhas vazias e comentários (#). Remove o \n do final. Retorna 0 no fim do arquivo.
+static int lerLinhaArquivo(FILE *arquivo, char *linha, int tamanho)
+{
+    while (fgets(linha, tamanho, arquivo) != NULL)
+    {
+        linha[strcspn(linha, "\r\n")] = '\0'; // O "\r" aparece se o arquivo foi editado no Windows.
+
+        if (linha[0] != '\0' && linha[0] != '#')
+            return 1;
+    }
+    return 0;
+}
+
 // LEITURA
 
 void lerTexto(const char *mensagem, char *input, int tamanho)
@@ -77,6 +151,7 @@ void pausar(void)
 
 // NUMERAÇÃO
 
+// Adiciona ao número da conta o sufixo correspondente ao tipo de conta (Corrente, "-01"; Salário, "-02"; Poupança, "-03").
 void formatarNumeroConta(char *destino, int tamanho, int numero, int tipoConta)
 {
     snprintf(destino, tamanho, "%d-%02d", numero, tipoConta + 1);
@@ -84,18 +159,7 @@ void formatarNumeroConta(char *destino, int tamanho, int numero, int tipoConta)
 
 // CADASTRO
 
-static int proximoNumeroConta(const Banco *banco)
-{
-    int maior = NUMERO_INICIAL - 1;
-    for (int i = 0; i < banco->quantidadeClientes; i++)
-    {
-        if (banco->contas[i].numero > maior)
-            maior = banco->contas[i].numero;
-    }
-    return maior + 1;
-}
-
-static const char *nomeTipoConta(int tipo)
+const char *nomeTipoConta(int tipo)
 {
     switch (tipo)
     {
@@ -218,7 +282,23 @@ int abrirBanco(Banco *banco)
 
 // CONSULTA
 
-// Retorna um ponteiro para a conta com esse número, ou NULL. O ponteiro deixa de valer depois que um novo cliente for cadastrado, já que o realloc pode mudar o vetor de lugar na memória.
+// Lista todos os clientes cadastrados no banco.
+void consultarClientes(Banco *banco)
+{
+    if (banco->quantidadeClientes == 0)
+    {
+        printf("\nNenhum cliente cadastrado. Use \"Abrir banco\" primeiro.\n");
+        return;
+    }
+
+    printf("== CLIENTES ==\n\n");
+    for (int i = 0; i < banco->quantidadeClientes; i++)
+    {
+        printf("Conta %d - %s\n", banco->contas[i].numero, banco->contas[i].cliente);
+    }
+}
+
+// Retorna um ponteiro para a conta com o número escolhido, ou NULL. O ponteiro deixa de valer depois que um novo cliente for cadastrado, já que o realloc pode mudar o vetor de lugar na memória.
 Conta *consultarCliente(Banco *banco, int numero)
 {
     for (int i = 0; i < banco->quantidadeClientes; i++)
@@ -253,31 +333,17 @@ void exibirDadosCliente(const Conta *c)
     printf("Saldo total: R$ %.2f\n", total);
 
     if (c->temEmprestimo)
+    {
         printf("Empréstimo: já utilizado\n");
+    }
     else if (podeFazerEmprestimo(c))
+    {
         printf("Empréstimo: disponível (limite de R$ %.2f)\n",
                informarLimiteEmprestimo(c->saldo[POUPANCA], c->saldo[CORRENTE]));
+    }
     else
-        printf("Empréstimo: não disponível\n");
-}
-
-// Transforma o código no nome da transação. Ex.: 3 (EMPRESTIMO) → "E".
-static const char *codigoTransacao(int tipo)
-{
-    switch (tipo)
     {
-    case DEPOSITO:
-        return "D";
-    case SAQUE:
-        return "S";
-    case EMPRESTIMO:
-        return "E";
-    case TITULO:
-        return "T";
-    case PREMIO:
-        return "P";
-    default:
-        return "DESCONHECIDA";
+        printf("Empréstimo: não disponível\n");
     }
 }
 
@@ -302,7 +368,8 @@ void exibirHistorico(const Conta *c)
 
 void alertarSaldoNegativo(const Conta *c)
 {
-    if (c->possui[CORRENTE] && c->saldo[CORRENTE] < 0) {
+    if (c->possui[CORRENTE] && c->saldo[CORRENTE] < 0)
+    {
         char numeroConta[16];
         formatarNumeroConta(numeroConta, sizeof numeroConta, c->numero, CORRENTE);
 
@@ -311,32 +378,6 @@ void alertarSaldoNegativo(const Conta *c)
 }
 
 // ARQUIVOS
-
-// Transforma o nome da transação no número correspondente. Ex.: "S" → 2 (SAQUE). Retorna 0 se não reconhecer.
-static int tipoDoCodigo(const char *codigo)
-{
-    if (strcmp(codigo, "D") == 0)
-    {
-        return DEPOSITO;
-    }
-    if (strcmp(codigo, "S") == 0)
-    {
-        return SAQUE;
-    }
-    if (strcmp(codigo, "E") == 0)
-    {
-        return EMPRESTIMO;
-    }
-    if (strcmp(codigo, "T") == 0)
-    {
-        return TITULO;
-    }
-    if (strcmp(codigo, "P") == 0)
-    {
-        return PREMIO;
-    }
-    return 0;
-}
 
 int salvarBanco(const Banco *banco, const char *caminho)
 {
@@ -383,19 +424,6 @@ int salvarBanco(const Banco *banco, const char *caminho)
     }
 
     return ok;
-}
-
-// Lê a próxima linha útil do arquivo, pulando linhas vazias e comentários (#). Remove o \n do final. Retorna 0 no fim do arquivo.
-static int lerLinhaArquivo(FILE *arquivo, char *linha, int tamanho)
-{
-    while (fgets(linha, tamanho, arquivo) != NULL)
-    {
-        linha[strcspn(linha, "\r\n")] = '\0'; // O "\r" aparece se o arquivo foi editado no Windows.
-
-        if (linha[0] != '\0' && linha[0] != '#')
-            return 1;
-    }
-    return 0;
 }
 
 // Lê os dados de um cliente por completo, desde "CONTA" até a última transação. Retorna 0 se alguma linha não estiver no formato esperado.
@@ -520,13 +548,13 @@ int carregarBanco(Banco *banco, const char *caminho)
 
 int adicionarConta(Banco *banco, const Conta *nova)
 {
-    Conta *tempo = realloc((*banco).contas, ((*banco).quantidadeClientes + 1) * sizeof(Conta));
-    if (tempo == NULL)
+    Conta *temporaria = realloc((*banco).contas, ((*banco).quantidadeClientes + 1) * sizeof(Conta));
+    if (temporaria == NULL)
     {
         printf("Erro ao alocar memória.\n");
         return 0;
     }
-    (*banco).contas = tempo;
+    (*banco).contas = temporaria;
     (*banco).contas[(*banco).quantidadeClientes] = *nova;
     (*banco).quantidadeClientes++;
     return 1;
@@ -597,9 +625,18 @@ int sacar(Conta *c, int tipoConta, float valor)
 
 // EMPRÉSTIMO
 
+// Pode pedir empréstimo quem tem conta corrente, saldo na poupança e ainda não fez empréstimo. Como a corrente pode estar negativa, o limite também precisa ser positivo.
 int podeFazerEmprestimo(const Conta *c)
 {
-    return !c->temEmprestimo && c->possui[CORRENTE] && c->possui[POUPANCA] && c->saldo[POUPANCA] > 0 && c->saldo[CORRENTE] > 0;
+    if (c->temEmprestimo || !c->possui[CORRENTE] || !c->possui[POUPANCA])
+    {
+        return 0;
+    }
+    if (c->saldo[POUPANCA] <= 0)
+    {
+        return 0;
+    }
+    return informarLimiteEmprestimo(c->saldo[POUPANCA], c->saldo[CORRENTE]) > 0;
 }
 
 float informarLimiteEmprestimo(float saldoPoupanca, float saldoCorrente)
@@ -630,14 +667,24 @@ int solicitarEmprestimo(Conta *c, float valor)
 
 // TÍTULOS
 
+// Pode comprar título quem tem conta salário, ainda não tem título e possui entre R$ 1.000,00 e R$ 1.500,00 na salário.
 int podeComprarTitulo(const Conta *c)
 {
-    return 0;
+    return c->possui[SALARIO] && !c->temTitulo && c->saldo[SALARIO] >= TITULO_MIN && c->saldo[SALARIO] <= TITULO_MAX;
 }
 
+// Debita o preço do título da conta salário. Retorna 1 se comprou.
 int comprarTitulo(Conta *c)
 {
-    return 0;
+    if (!podeComprarTitulo(c))
+    {
+        return 0;
+    }
+
+    c->saldo[SALARIO] -= PRECO_TITULO;
+    c->temTitulo = 1;
+    registrarTransacao(c, PRECO_TITULO, TITULO);
+    return 1;
 }
 
 // SORTEIO
@@ -687,9 +734,147 @@ int ehPrimo(int valor)
     return 1;
 }
 
+// Posição (no vetor de participantes) do maior resultado que atende ao critério, ou -1 se ninguém atender. Em caso de empate, fica quem aparece primeiro (maior saldo).
+static int maiorResultadoPorCriterio(const int resultados[], int quantidade, int criterio, double media)
+{
+    int vencedor = -1;
+
+    for (int i = 0; i < quantidade; i++)
+    {
+        int atende = 0;
+
+        if (criterio == CRITERIO_PRIMO)
+        {
+            atende = ehPrimo(resultados[i]);
+        }
+        else if (criterio == CRITERIO_PAR)
+        {
+            atende = resultados[i] % 2 == 0;
+        }
+        else if (criterio == CRITERIO_ACIMA_MEDIA)
+        {
+            atende = resultados[i] > media;
+        }
+
+        if (atende && (vencedor == -1 || resultados[i] > resultados[vencedor]))
+        {
+            vencedor = i;
+        }
+    }
+
+    return vencedor;
+}
+
+// Sorteia entre os (ou até) 5 clientes com título de maior saldo na conta salário. Retorna 1 se houve vencedor.
 int efetuarSorteio(Banco *banco)
 {
-    return 0;
+    // Índices dos clientes que têm título.
+    int *indices = malloc(banco->quantidadeClientes * sizeof(int));
+    if (indices == NULL)
+    {
+        printf("Erro ao alocar memória.\n");
+        return 0;
+    }
+
+    int clientesComTitulo = 0;
+    for (int i = 0; i < banco->quantidadeClientes; i++)
+    {
+        if (banco->contas[i].temTitulo)
+        {
+            indices[clientesComTitulo++] = i;
+        }
+    }
+
+    if (clientesComTitulo == 0)
+    {
+        printf("Nenhum cliente possui título de capitalização. Não há participantes para o sorteio.\n");
+        free(indices);
+        return 0;
+    }
+
+    // Ordena os índices pelo saldo da conta salário, do maior para o menor (selection sort).
+    for (int i = 0; i < clientesComTitulo - 1; i++)
+    {
+        int maior = i;
+        for (int j = i + 1; j < clientesComTitulo; j++)
+        {
+            if (banco->contas[indices[j]].saldo[SALARIO] > banco->contas[indices[maior]].saldo[SALARIO])
+            {
+                maior = j;
+            }
+        }
+        int temporario = indices[i];
+        indices[i] = indices[maior];
+        indices[maior] = temporario;
+    }
+
+    int participantes = (clientesComTitulo < MAX_PARTICIPANTES_SORTEIO) ? clientesComTitulo : MAX_PARTICIPANTES_SORTEIO;
+
+    // Sorteia um número para cada participante e calcula a soma de Fibonacci.
+    int numeros[MAX_PARTICIPANTES_SORTEIO];
+    int resultados[MAX_PARTICIPANTES_SORTEIO];
+    double media = 0;
+
+    for (int i = 0; i < participantes; i++)
+    {
+        numeros[i] = rand() % LIMITE_NUMERO_SORTEIO + 1;
+        resultados[i] = somaFibonacci(numeros[i]);
+        media += resultados[i];
+    }
+    media /= participantes;
+
+    // Mostra os participantes.
+    printf("== Participantes ==\n");
+    for (int i = 0; i < participantes; i++)
+    {
+        const Conta *c = &banco->contas[indices[i]];
+        char numeroConta[16];
+        formatarNumeroConta(numeroConta, sizeof numeroConta, c->numero, SALARIO);
+
+        printf("%s | %s | Saldo: R$ %.2f | Número sorteado: %d | Soma Fibonacci: %d%s%s\n", c->cliente, numeroConta, c->saldo[SALARIO], numeros[i], resultados[i], ehPrimo(resultados[i]) ? " (primo)" : "", resultados[i] % 2 == 0 ? " (par)" : "");
+    }
+    printf("Média dos resultados: %.2f\n", media);
+
+    // Escolhe o vencedor: maior primo, depois maior par, depois maior acima da média.
+    const char *criterio = "maior resultado primo";
+    int vencedor = maiorResultadoPorCriterio(resultados, participantes, CRITERIO_PRIMO, media);
+
+    if (vencedor == -1)
+    {
+        criterio = "maior resultado par";
+        vencedor = maiorResultadoPorCriterio(resultados, participantes, CRITERIO_PAR, media);
+    }
+    if (vencedor == -1)
+    {
+        criterio = "maior resultado acima da média";
+        vencedor = maiorResultadoPorCriterio(resultados, participantes, CRITERIO_ACIMA_MEDIA, media);
+    }
+
+    if (vencedor == -1)
+    {
+        printf("\nNenhum participante atendeu aos critérios. O sorteio ficou sem vencedor.\n");
+        free(indices);
+        return 0;
+    }
+
+    // Credita o prêmio na conta salário do vencedor.
+    Conta *ganhador = &banco->contas[indices[vencedor]];
+    float premio = MULTIPLICADOR_PREMIO * ganhador->saldo[SALARIO];
+
+    ganhador->saldo[SALARIO] += premio;
+    ganhador->premioRecebido += premio;
+    ganhador->temTitulo = 0;
+    registrarTransacao(ganhador, premio, PREMIO);
+
+    char numeroConta[16];
+    formatarNumeroConta(numeroConta, sizeof numeroConta, ganhador->numero, SALARIO);
+
+    printf("\n== Cliente Contemplado no Sorteio ==\n");
+    printf("%s | %s | R$ %.2f\n", ganhador->cliente, numeroConta, premio);
+    printf("Critério: %s.\n", criterio);
+
+    free(indices);
+    return 1;
 }
 
 // RELATÓRIOS
@@ -725,7 +910,9 @@ void listarClientesEmprestimo(const Banco *banco)
         }
     }
     if (contagem == 0)
+    {
         printf("Nenhum cliente está autorizado a fazer Empréstimo no momento.\n");
+    }
 }
 
 void verificarSaldoNegativo(const Banco *banco)
@@ -744,15 +931,47 @@ void verificarSaldoNegativo(const Banco *banco)
         }
     }
     if (contagem == 0)
+    {
         printf("Nenhum cliente está com Saldo Negativo na Conta Corrente.\n");
+    }
 }
 
 void listarClientesAptosTitulo(const Banco *banco)
 {
+    printf("\n== Clientes Aptos a Compra de Títulos ==\n");
+    int contagem = 0;
+    for (int i = 0; i < banco->quantidadeClientes; i++)
+    {
+        if (podeComprarTitulo(&banco->contas[i]))
+        {
+            char numeroConta[16];
+            formatarNumeroConta(numeroConta, sizeof numeroConta, banco->contas[i].numero, SALARIO);
+
+            printf("%s | %s | R$ %.2f\n", banco->contas[i].cliente, numeroConta, banco->contas[i].saldo[SALARIO]);
+            contagem++;
+        }
+    }
+    if (contagem == 0)
+        printf("Nenhum cliente está apto a comprar títulos no momento.\n");
 }
 
 void listarClientesSorteados(const Banco *banco)
 {
+    printf("\n== Clientes Contemplados no Sorteio ==\n");
+    int contagem = 0;
+    for (int i = 0; i < banco->quantidadeClientes; i++)
+    {
+        if (banco->contas[i].premioRecebido > 0)
+        {
+            char numeroConta[16];
+            formatarNumeroConta(numeroConta, sizeof numeroConta, banco->contas[i].numero, SALARIO);
+
+            printf("%s | %s | R$ %.2f\n", banco->contas[i].cliente, numeroConta, banco->contas[i].premioRecebido);
+            contagem++;
+        }
+    }
+    if (contagem == 0)
+        printf("Nenhum cliente foi contemplado em sorteios até o momento.\n");
 }
 
 void exibirRelatorio(const Banco *banco)

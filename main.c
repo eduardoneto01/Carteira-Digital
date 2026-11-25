@@ -27,11 +27,17 @@ static char lerOpcao(const char *mensagem, char seAcabar)
     return (char)tolower((unsigned char)texto[0]);
 }
 
-/*
+// Exibe o cabeçalho formatado e estilizado para cada função do programa.
+static void exibirCabecalho(const char *cabecalho)
+{
+    printf("==================================\n");
+    printf("%s\n", cabecalho);
+    printf("==================================\n\n");
+}
+
 // Consulta as contas que o cliente possui e devolve o valor do tipo escolhido (CORRENTE, SALARIO ou POUPANCA). Se ele tiver uma única conta, escolhe automaticamente.
 static int escolherTipoConta(const Conta *c)
 {
-    const char *nomes[QUANTIDADE_TIPOS] = {"Corrente", "Salário", "Poupança"};
     int tiposDisponiveis[QUANTIDADE_TIPOS];
     int quantidade = 0;
 
@@ -51,7 +57,9 @@ static int escolherTipoConta(const Conta *c)
     printf("\nEm qual conta?\n");
     for (int i = 0; i < quantidade; i++)
     {
-        printf("%d - %s\n", i + 1, nomes[tiposDisponiveis[i]]);
+        char numeroConta[16];
+        formatarNumeroConta(numeroConta, sizeof numeroConta, c->numero, tiposDisponiveis[i]);
+        printf("%d - %s [%s]\n", i + 1, nomeTipoConta(tiposDisponiveis[i]), numeroConta);
     }
 
     int opcao;
@@ -59,7 +67,9 @@ static int escolherTipoConta(const Conta *c)
     {
         opcao = lerInteiro("Opção: ");
         if (opcao < 1 || opcao > quantidade)
+        {
             printf("Opção inválida.\n");
+        }
     } while (opcao < 1 || opcao > quantidade);
 
     return tiposDisponiveis[opcao - 1];
@@ -79,8 +89,9 @@ static void menuCliente(Conta *c)
         printf("1 - Depositar\n");
         printf("2 - Sacar\n");
         printf("3 - Solicitar empréstimo\n");
-        printf("4 - Voltar\n");
-        opcao = lerOpcao("Opção: ", '4');
+        printf("4 - Comprar título de capitalização\n");
+        printf("5 - Voltar\n");
+        opcao = lerOpcao("Opção: ", '5');
 
         switch (opcao)
         {
@@ -117,7 +128,7 @@ static void menuCliente(Conta *c)
             if (!podeFazerEmprestimo(c))
             {
                 printf("Empréstimo não disponível para este cliente.\n");
-                printf("(Exige conta corrente + poupança, saldos positivos e nenhum empréstimo anterior.)\n");
+                printf("(Exige conta corrente, saldo na poupança e nenhum empréstimo anterior.)\n");
                 break;
             }
             float limite = informarLimiteEmprestimo(c->saldo[POUPANCA], c->saldo[CORRENTE]);
@@ -134,47 +145,29 @@ static void menuCliente(Conta *c)
             break;
         }
         case '4':
+        {
+            if (!podeComprarTitulo(c))
+            {
+                printf("Compra de título não disponível para este cliente.\n");
+                printf("(Exige conta salário com saldo entre R$ 1.000,00 e 1.500,00 e não possuir título de capitalização ativo no momento.)\n");
+                break;
+            }
+            if (comprarTitulo(c))
+            {
+                printf("Título adquirido. R$ %.2f debitados da conta salário.\n", PRECO_TITULO);
+            }
+            else
+            {
+                printf("Compra de título negada.\n");
+            }
+            break;
+        }
+        case '5':
             break;
         default:
             printf("Opção inválida.\n");
         }
-    } while (opcao != '4');
-}
-
-// Lista todos os clientes cadastrados no banco e permite consulta individual pelo número da conta.
-static void consultarClientes(Banco *banco)
-{
-    if (banco->quantidadeClientes == 0)
-    {
-        printf("\nNenhum cliente cadastrado. Use \"Abrir banco\" primeiro.\n");
-        return;
-    }
-
-    printf("== CLIENTES ==\n\n");
-    for (int i = 0; i < banco->quantidadeClientes; i++)
-    {
-        printf("Conta %d - %s\n", banco->contas[i].numero, banco->contas[i].cliente);
-    }
-
-    int numero = lerInteiro("\nNúmero da conta: ");
-    Conta *c = consultarCliente(banco, numero);
-
-    if (c == NULL)
-    {
-        printf("Conta não encontrada.\n");
-        return;
-    }
-
-    menuCliente(c);
-}
-*/
-
-// Exibe o título formatado e estilizado para cada função do programa.
-static void exibirTitulo(const char *titulo)
-{
-    printf("==================================\n");
-    printf("  %s\n", titulo);
-    printf("==================================\n\n");
+    } while (opcao != '5');
 }
 
 // PROGRAMA PRINCIPAL
@@ -187,7 +180,7 @@ int main()
     SetConsoleCP(65001);
 #endif
 
-    srand((unsigned)time(NULL));
+    srand((unsigned)time(NULL)); // Inicializa o gerador de números pseudoaleatórios "rand()" usando o horário atual para que a sequência de números gerados mude a cada execução do programa
     Banco banco = {NULL, 0};
 
     if (!carregarBanco(&banco, ARQUIVO_BANCO))
@@ -207,7 +200,7 @@ int main()
     do
     {
         limparTela();
-        exibirTitulo("CARTEIRA DIGITAL");
+        exibirCabecalho("CARTEIRA DIGITAL");
         printf("1 - Abrir banco\n");
         printf("2 - Consultar histórico\n");
         printf("3 - Efetuar sorteio\n");
@@ -218,13 +211,13 @@ int main()
         {
         case '1':
             limparTela();
-            exibirTitulo("ABRIR BANCO");
+            exibirCabecalho("ABRIR BANCO");
             abrirBanco(&banco);
             pausar();
             break;
         case '2':
             limparTela();
-            exibirTitulo("HISTÓRICO DO BANCO");
+            exibirCabecalho("HISTÓRICO DO BANCO");
             if (banco.quantidadeClientes == 0)
             {
                 printf("Abra o banco antes de consultar o histórico.\n");
@@ -237,7 +230,7 @@ int main()
             break;
         case '3':
             limparTela();
-            exibirTitulo("SORTEIO");
+            exibirCabecalho("SORTEIO");
             if (banco.quantidadeClientes == 0)
             {
                 printf("Abra o banco antes de efetuar o sorteio.\n");
@@ -258,7 +251,7 @@ int main()
     } while (opcao != 's');
 
     limparTela();
-    exibirTitulo("ENCERRANDO...");
+    exibirCabecalho("ENCERRANDO...");
 
     if (salvarBanco(&banco, ARQUIVO_BANCO))
     {
